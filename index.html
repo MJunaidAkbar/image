@@ -2,1792 +2,292 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image Follow-up & Ultra-Compressor</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0D10'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%2349D9C7' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2349D9C7'/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KiloPix – shrink images to 20, 25 or 30 KB</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2307071a'/%3E%3Cpath d='M32 10l20 12v20L32 54 12 42V22z' fill='none' stroke='%235cf2ff' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-  :root{
-    --bg:#0B0D10;
-    --panel:#14171C;
-    --panel-2:#1B1F26;
-    --border:#262B33;
-    --text:#E7E5E1;
-    --text-dim:#8A8F98;
-    --accent:#49D9C7;
-    --accent-dim:#2C7A72;
-    --accent-2:#F0A868;
-    --danger:#E1573F;
-    --success:#4ADE80;
-    --dot-opacity:0.045;
-    --neon-1:#4CFFE8;
-    --neon-2:#FF3CAC;
-    --neon-3:#8657FF;
-    --neon-4:#FFD34C;
-  }
-  body.theme-light{
-    --bg:#F3F1EC;
-    --panel:#FFFFFF;
-    --panel-2:#ECE9E2;
-    --border:#DCD7CC;
-    --text:#211F1C;
-    --text-dim:#77726A;
-    --accent:#1FA598;
-    --accent-dim:#B8E6DF;
-    --accent-2:#D97757;
-    --danger:#C6432F;
-    --success:#16A34A;
-    --dot-opacity:0.07;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
-    min-height:100vh;
-    transition:background-color .35s ease, color .35s ease;
-    position:relative;
-    overflow-x:hidden;
-  }
-  ::selection{ background:var(--accent); color:#04211E; }
-  header, .sidebar, #dropzone, .canvas-frame, .preset-btn, .primary-btn, .reset-link, .theme-toggle, .filter-row, .wm-preview, .download-bar, .tab-btn, .opt-chip, .style-chip{
-    transition:background-color .25s ease, border-color .25s ease, color .25s ease, transform .15s ease, box-shadow .2s ease;
-  }
-
-  /* Decorative retro background layers */
-  .bg-layer{ position:fixed; inset:0; z-index:0; pointer-events:none; }
-  .bg-aurora{ overflow:hidden; filter:blur(70px); opacity:0.5; }
-  .bg-aurora span{
-    position:absolute; border-radius:50%; mix-blend-mode:screen;
-    width:46vw; height:46vw;
-  }
-  .bg-aurora span:nth-child(1){ background:var(--neon-3); top:-15%; left:-10%; animation:auroraFloat1 22s ease-in-out infinite; }
-  .bg-aurora span:nth-child(2){ background:var(--neon-1); top:30%; right:-15%; animation:auroraFloat2 26s ease-in-out infinite; }
-  .bg-aurora span:nth-child(3){ background:var(--neon-2); bottom:-20%; left:20%; animation:auroraFloat3 30s ease-in-out infinite; }
-  body.theme-light .bg-aurora{ opacity:0.22; }
-
-  .bg-grid{
-    background-image:
-      linear-gradient(to right, rgba(76,255,232,0.12) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(76,255,232,0.12) 1px, transparent 1px);
-    background-size:42px 42px;
-    -webkit-mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 55%, transparent 100%);
-    mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 55%, transparent 100%);
-    animation:gridDrift 14s linear infinite;
-    opacity:0.55;
-  }
-  body.theme-light .bg-grid{ opacity:0.25; }
-
-  .bg-scan{
-    background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.028) 0px, rgba(255,255,255,0.028) 1px, transparent 1px, transparent 3px);
-    animation:scanDrift 9s linear infinite;
-  }
-  body.theme-light .bg-scan{ display:none; }
-
-  main, header, footer{ position:relative; z-index:1; }
-
-  @keyframes auroraFloat1{
-    0%,100%{ transform:translate(0,0) scale(1); }
-    50%{ transform:translate(8vw,10vh) scale(1.15); }
-  }
-  @keyframes auroraFloat2{
-    0%,100%{ transform:translate(0,0) scale(1); }
-    50%{ transform:translate(-10vw,6vh) scale(1.1); }
-  }
-  @keyframes auroraFloat3{
-    0%,100%{ transform:translate(0,0) scale(1); }
-    50%{ transform:translate(6vw,-8vh) scale(1.2); }
-  }
-  @keyframes gridDrift{
-    from{ background-position:0 0; }
-    to{ background-position:0 42px; }
-  }
-  @keyframes scanDrift{
-    from{ background-position:0 0; }
-    to{ background-position:0 60px; }
-  }
-  @keyframes neonBorderPulse{
-    0%,100%{ box-shadow:0 0 0 1px var(--border), 0 0 18px 0 rgba(76,255,232,0.18); }
-    33%{ box-shadow:0 0 0 1px var(--border), 0 0 22px 2px rgba(255,60,172,0.22); }
-    66%{ box-shadow:0 0 0 1px var(--border), 0 0 22px 2px rgba(134,87,255,0.22); }
-  }
-  @keyframes textGlow{
-    0%,100%{ text-shadow:0 0 10px rgba(76,255,232,0.55), 0 0 22px rgba(76,255,232,0.25); }
-    50%{ text-shadow:0 0 10px rgba(255,60,172,0.55), 0 0 22px rgba(255,60,172,0.25); }
-  }
-  @keyframes shimmer{
-    0%{ background-position:0% 50%; }
-    100%{ background-position:200% 50%; }
-  }
-
-  @keyframes fadeSlideUp{
-    from{ opacity:0; transform:translateY(14px); }
-    to{ opacity:1; transform:translateY(0); }
-  }
-  @keyframes popIn{
-    from{ opacity:0; transform:scale(0.96); }
-    to{ opacity:1; transform:scale(1); }
-  }
-  @keyframes gradientShift{
-    0%{ background-position:0% 50%; }
-    50%{ background-position:100% 50%; }
-    100%{ background-position:0% 50%; }
-  }
-
-  header{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:22px 36px;
-    border-bottom:1px solid var(--border);
-    background:rgba(20,23,28,0.35);
-    backdrop-filter:blur(10px);
-    position:relative;
-  }
-  header::after{
-    content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
-    background:linear-gradient(90deg, transparent, var(--neon-1), var(--neon-2), var(--neon-3), transparent);
-    background-size:300% 100%;
-    animation:shimmer 6s linear infinite;
-    opacity:0.7;
-  }
-  body.theme-light header{ background:rgba(255,255,255,0.5); }
-  .brand{ display:flex; align-items:center; gap:12px; }
-  .brand-mark{
-    width:34px; height:34px; border-radius:9px;
-    background:linear-gradient(135deg, var(--neon-1), var(--neon-3), var(--neon-2));
-    background-size:200% 200%;
-    animation:gradientShift 6s ease infinite;
-    box-shadow:0 0 18px 1px rgba(76,255,232,0.45);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Space Grotesk',sans-serif; font-weight:700; color:#04211E; font-size:16px;
-  }
-  .header-actions{ display:flex; align-items:center; gap:12px; }
-  .theme-toggle{
-    display:flex; align-items:center; gap:8px;
-    background:var(--panel); border:1px solid var(--border); border-radius:999px;
-    padding:6px 12px 6px 6px; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:11px;
-    color:var(--text-dim);
-  }
-  .theme-toggle:hover{ border-color:var(--neon-1); box-shadow:0 0 12px rgba(76,255,232,0.3); }
-  .theme-dot{
-    width:20px; height:20px; border-radius:50%;
-    background:var(--accent); display:flex; align-items:center; justify-content:center;
-    font-size:11px; transition:transform .3s ease;
-  }
-  .theme-toggle.is-light .theme-dot{ transform:rotate(180deg); }
-  .brand-text h1{
-    font-family:'Space Grotesk',sans-serif; font-size:17px; margin:0; letter-spacing:0.3px;
-    font-weight:700;
-    animation:textGlow 5s ease-in-out infinite;
-  }
-  body.theme-light .brand-text h1{ animation:none; text-shadow:none; }
-  .brand-text span{
-    display:block; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-dim);
-    letter-spacing:1.5px; text-transform:uppercase; margin-top:2px;
-  }
-  .reset-link{
-    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim);
-    background:transparent; border:1px solid var(--border); padding:8px 14px; border-radius:8px;
-    cursor:pointer; transition:all .15s ease; display:none;
-  }
-  .reset-link:hover{ border-color:var(--accent); color:var(--accent); }
-
-  main{ padding:36px; max-width:1400px; margin:0 auto; }
-
-  /* Dropzone */
-  #dropzone{
-    margin-top:6vh;
-    border:1.5px solid var(--border);
-    border-radius:20px;
-    padding:80px 40px;
-    text-align:center;
-    max-width:720px;
-    margin-left:auto; margin-right:auto;
-    cursor:pointer;
-    background:rgba(20,23,28,0.55);
-    backdrop-filter:blur(6px);
-    animation:fadeSlideUp .5s ease, neonBorderPulse 5s ease-in-out infinite;
-  }
-  #dropzone.drag{ border-color:var(--neon-1); background:var(--panel-2); transform:scale(1.015); }
-  body.theme-light #dropzone{ animation:fadeSlideUp .5s ease; background:var(--panel); }
-  #dropzone .dz-icon{
-    width:56px; height:56px; margin:0 auto 22px;
-    filter:drop-shadow(0 0 8px rgba(76,255,232,0.65));
-  }
-  #dropzone h2{
-    font-family:'Space Grotesk',sans-serif; font-size:24px; margin:0 0 10px; font-weight:600;
-  }
-  #dropzone p{ color:var(--text-dim); font-size:14px; margin:0 0 26px; }
-  #dropzone .eyebrow{
-    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase;
-    color:var(--accent); margin-bottom:14px; display:block;
-  }
-  .browse-btn{
-    display:inline-block; color:#04211E; font-weight:600;
-    padding:11px 22px; border-radius:9px; font-size:13.5px; border:none; cursor:pointer;
-    background:linear-gradient(90deg, var(--neon-1), var(--neon-3), var(--neon-2), var(--neon-1));
-    background-size:300% 100%;
-    animation:shimmer 5s linear infinite;
-    transition:transform .15s ease, box-shadow .2s ease;
-  }
-  .browse-btn:hover{ transform:translateY(-2px); box-shadow:0 8px 24px rgba(76,255,232,0.4); }
-  .browse-btn:active{ transform:translateY(0); }
-  #fileInput{ display:none; }
-
-  /* Workspace */
-  #workspace{ display:none; gap:28px; animation:fadeSlideUp .45s ease; }
-  .ws-grid{ display:flex; gap:28px; align-items:flex-start; }
-
-  .preview-col{ flex:1; min-width:0; }
-  .canvas-frame{
-    background:
-      linear-gradient(45deg, #1a1d22 25%, transparent 25%),
-      linear-gradient(-45deg, #1a1d22 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #1a1d22 75%),
-      linear-gradient(-45deg, transparent 75%, #1a1d22 75%);
-    background-size:20px 20px;
-    background-position:0 0, 0 10px, 10px -10px, -10px 0px;
-    background-color:#101216;
-    border:1px solid var(--border);
-    border-radius:16px;
-    display:flex; align-items:center; justify-content:center;
-    padding:22px;
-    min-height:420px;
-    position:relative;
-    overflow:hidden;
-    transition:box-shadow .3s ease;
-    animation:neonBorderPulse 5s ease-in-out infinite;
-  }
-  .canvas-frame:hover{ box-shadow:0 0 0 1px var(--neon-1) inset, 0 0 30px 2px rgba(76,255,232,0.3); }
-  body.theme-light .canvas-frame{ animation:none; }
-  #canvas{ max-width:100%; max-height:62vh; border-radius:4px; box-shadow:0 20px 60px rgba(0,0,0,0.5); animation:popIn .35s ease; }
-  .scanline{
-    position:absolute; left:0; right:0; height:3px;
-    background:linear-gradient(90deg, transparent, var(--neon-1), var(--neon-2), var(--neon-3), transparent);
-    box-shadow:0 0 20px 3px rgba(76,255,232,0.6);
-    top:-10%;
-    opacity:0;
-    pointer-events:none;
-  }
-  .scanline.run{ animation:sweep 0.7s ease-in-out; }
-  @keyframes sweep{
-    0%{ top:-4%; opacity:0; }
-    10%{ opacity:1; }
-    90%{ opacity:1; }
-    100%{ top:104%; opacity:0; }
-  }
-
-  .readout{
-    display:flex; gap:22px; justify-content:center; margin-top:14px;
-    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim);
-    flex-wrap:wrap;
-  }
-  .readout b{ color:var(--text); font-weight:600; }
-
-  /* Live Inspection Banner */
-  .inspect-banner{
-    display:none; margin-top:14px;
-    background:rgba(20,23,28,0.75); border:1px solid var(--accent);
-    border-radius:12px; padding:12px 16px; font-family:'JetBrains Mono',monospace;
-    font-size:12px; animation:fadeSlideUp .3s ease;
-  }
-  .inspect-banner.show{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
-  .inspect-stat{ display:flex; align-items:center; gap:8px; }
-  .inspect-badge{
-    background:rgba(74,222,128,0.18); border:1px solid var(--success);
-    color:var(--success); border-radius:6px; padding:2px 8px; font-weight:600; font-size:11px;
-  }
-
-  /* Sidebar */
-  .sidebar{
-    width:380px; flex-shrink:0;
-    background:rgba(20,23,28,0.6);
-    backdrop-filter:blur(8px);
-    border:1px solid var(--border);
-    border-radius:16px;
-    overflow:hidden;
-    animation:neonBorderPulse 6s ease-in-out infinite;
-  }
-  body.theme-light .sidebar{ animation:none; background:var(--panel); }
-  .tabs{ display:flex; border-bottom:1px solid var(--border); }
-  .tab-btn{
-    flex:1; background:transparent; border:none; color:var(--text-dim);
-    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px;
-    text-transform:uppercase; padding:14px 4px; cursor:pointer; border-bottom:2px solid transparent;
-  }
-  .tab-btn:hover{ color:var(--text); }
-  .tab-btn.active{ color:var(--neon-1); border-bottom-color:var(--neon-1); background:var(--panel-2); text-shadow:0 0 10px rgba(76,255,232,0.5); }
-  .tab-panel{ display:none; padding:22px; max-height:75vh; overflow-y:auto; }
-  .tab-panel.active{ display:block; animation:fadeSlideUp .3s ease; }
-
-  /* Custom scrollbar for sidebar */
-  .tab-panel::-webkit-scrollbar { width:6px; }
-  .tab-panel::-webkit-scrollbar-track { background:transparent; }
-  .tab-panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-  .tab-panel::-webkit-scrollbar-thumb:hover { background:var(--accent-dim); }
-
-  .section-title{
-    font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; margin:0 0 4px;
-  }
-  .section-sub{ color:var(--text-dim); font-size:12px; margin:0 0 14px; line-height:1.4; }
-
-  .preset-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:26px; }
-  .preset-btn{
-    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
-    border-radius:10px; padding:12px 8px; cursor:pointer; text-align:left;
-    transition:border-color .15s ease;
-  }
-  .preset-btn:hover{ border-color:var(--neon-1); transform:translateY(-2px); box-shadow:0 0 14px rgba(76,255,232,0.25); }
-  .preset-btn.active{ border-color:var(--neon-1); background:rgba(76,255,232,0.08); box-shadow:0 0 16px rgba(76,255,232,0.35); animation:popIn .2s ease; }
-  .preset-btn .label{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; }
-  .preset-btn .dims{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-dim); display:block; margin-top:3px; }
-
-  /* Target Chips UX */
-  .target-chips{
-    display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin:10px 0 16px 0;
-  }
-  .chip-btn{
-    background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
-    padding:9px 4px; color:var(--text); font-family:'JetBrains Mono',monospace;
-    font-size:11px; text-align:center; cursor:pointer; transition:all .15s ease;
-  }
-  .chip-btn:hover{ border-color:var(--neon-1); transform:translateY(-1px); }
-  .chip-btn.active{ background:rgba(76,255,232,0.15); border-color:var(--neon-1); color:var(--neon-1); font-weight:600; box-shadow:0 0 10px rgba(76,255,232,0.3); }
-  .chip-btn.ultra{ border-color:rgba(240,168,104,0.45); }
-  .chip-btn.ultra.active{ background:rgba(240,168,104,0.18); border-color:var(--accent-2); color:var(--accent-2); box-shadow:0 0 12px rgba(240,168,104,0.35); }
-
-  /* Readability Priority selector */
-  .opt-selector-wrap{ margin-bottom:14px; }
-  .opt-chips{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
-  .opt-chip{
-    background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
-    padding:8px 8px; text-align:left; cursor:pointer;
-  }
-  .opt-chip:hover{ border-color:var(--accent); }
-  .opt-chip.active{ border-color:var(--accent); background:rgba(73,217,199,0.12); }
-  .opt-chip-title{ font-size:11.5px; font-weight:600; display:block; }
-  .opt-chip-desc{ font-size:10px; color:var(--text-dim); display:block; margin-top:2px; font-family:'JetBrains Mono',monospace; }
-
-  /* Filter Subheaders & Style Presets */
-  .filter-subhead{
-    display:flex; justify-content:space-between; align-items:center;
-    font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1px;
-    text-transform:uppercase; color:var(--accent); margin:18px 0 10px 0;
-  }
-  .filter-subhead:first-of-type{ margin-top:0; }
-  .filter-subhead-action{
-    font-size:10px; color:var(--text-dim); text-decoration:none; cursor:pointer;
-    letter-spacing:0; text-transform:none;
-  }
-  .filter-subhead-action:hover{ color:var(--neon-1); }
-
-  .style-preset-grid{
-    display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:18px;
-  }
-  .style-chip{
-    background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
-    padding:8px 4px; text-align:center; cursor:pointer; transition:all .15s ease;
-  }
-  .style-chip:hover{ border-color:var(--neon-1); transform:translateY(-1px); }
-  .style-chip.active{
-    background:rgba(76,255,232,0.14); border-color:var(--neon-1); color:var(--neon-1);
-    box-shadow:0 0 10px rgba(76,255,232,0.3); font-weight:600;
-  }
-  .style-chip-icon{ font-size:14px; display:block; margin-bottom:2px; }
-  .style-chip-name{ font-size:10px; font-family:'JetBrains Mono',monospace; display:block; }
-
-  /* Sliders Group in Filters */
-  .slider-group{
-    background:var(--panel-2); border:1px solid var(--border); border-radius:10px;
-    padding:12px; margin-bottom:18px; display:flex; flex-direction:column; gap:10px;
-  }
-  .filter-slider-row{
-    display:flex; flex-direction:column; gap:4px;
-  }
-  .filter-slider-head{
-    display:flex; justify-content:space-between; align-items:center;
-    font-family:'JetBrains Mono',monospace; font-size:11px;
-  }
-  .filter-slider-val{
-    color:var(--accent); font-weight:600;
-  }
-
-  .slider-row{ margin-bottom:12px; }
-  input[type=range]{
-    width:100%; accent-color:var(--accent); margin:6px 0;
-  }
-  .slider-value{
-    font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--accent); font-weight:600;
-  }
-  .compress-info{
-    background:var(--panel-2); border:1px solid var(--border); border-radius:10px;
-    padding:12px; margin-bottom:16px; font-family:'JetBrains Mono',monospace; font-size:11px;
-  }
-  .compress-info div{ display:flex; justify-content:space-between; margin-bottom:6px; }
-  .compress-info div:last-child{ margin-bottom:0; }
-
-  .status-badge{
-    display:inline-block; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600; text-transform:uppercase;
-  }
-  .status-badge.tight{ background:rgba(240,168,104,0.2); color:var(--accent-2); border:1px solid rgba(240,168,104,0.4); }
-  .status-badge.normal{ background:rgba(76,255,232,0.15); color:var(--neon-1); border:1px solid rgba(76,255,232,0.3); }
-
-  .action-btn-group{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
-
-  .primary-btn{
-    width:100%; background:var(--accent); color:#04211E; font-weight:600; font-size:13px;
-    border:none; border-radius:10px; padding:12px; cursor:pointer;
-  }
-  .primary-btn:hover{ filter:brightness(1.1); transform:translateY(-2px); box-shadow:0 0 20px rgba(76,255,232,0.4); }
-  .primary-btn:active{ transform:translateY(0); }
-  .primary-btn.amber{ background:var(--accent-2); color:#241103; font-weight:700; }
-  .primary-btn.amber:hover{ box-shadow:0 0 20px rgba(240,168,104,0.45); }
-  .primary-btn.secondary{
-    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
-  }
-  .primary-btn.secondary:hover{ border-color:var(--accent); box-shadow:0 0 14px rgba(76,255,232,0.2); }
-  .primary-btn:disabled{ opacity:0.45; cursor:not-allowed; }
-
-  .filter-row{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:10px 0; border-bottom:1px solid var(--border);
-  }
-  .filter-row:last-of-type{ border-bottom:none; }
-  .filter-row .name{ font-size:13px; font-weight:500; }
-  .filter-row .desc{ font-size:11px; color:var(--text-dim); }
-  .switch{ position:relative; width:38px; height:22px; flex-shrink:0; }
-  .switch input{ opacity:0; width:0; height:0; }
-  .slider-toggle{
-    position:absolute; cursor:pointer; inset:0; background:var(--panel-2);
-    border:1px solid var(--border); border-radius:22px; transition:.15s;
-  }
-  .slider-toggle:before{
-    content:""; position:absolute; height:16px; width:16px; left:2px; top:2px;
-    background:var(--text-dim); border-radius:50%; transition:.15s;
-  }
-  input:checked + .slider-toggle{ background:rgba(73,217,199,0.18); border-color:var(--accent); }
-  input:checked + .slider-toggle:before{ background:var(--accent); transform:translateX(16px); }
-
-  .auto-enhance-btn{
-    width:100%; color:#04211E; font-weight:700; border:none; border-radius:10px;
-    padding:13px; cursor:pointer; margin-bottom:18px; font-size:13.5px;
-    font-family:'Space Grotesk',sans-serif;
-    background:linear-gradient(90deg, var(--neon-1), var(--neon-3), var(--neon-2), var(--neon-1));
-    background-size:300% 100%;
-    animation:shimmer 5s linear infinite;
-    transition:transform .15s ease;
-  }
-  .auto-enhance-btn:hover{ transform:translateY(-2px) scale(1.01); }
-
-  .wm-preview{
-    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-dim);
-    background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
-    padding:10px 12px; margin-top:14px;
-  }
-
-  .wm-datetime{ display:flex; gap:10px; margin-top:14px; }
-  .wm-field{ flex:1; }
-  .wm-field label{
-    display:block; font-family:'JetBrains Mono',monospace; font-size:10.5px;
-    letter-spacing:0.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;
-  }
-  .wm-field input[type=number]{
-    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
-    border-radius:8px; padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:12.5px;
-  }
-
-  /* Compare UI */
-  .compare-wrap{ position:relative; display:inline-block; line-height:0; }
-  .compare-img{
-    position:absolute; inset:0; width:100%; height:100%;
-    border-radius:4px; z-index:1; display:none; object-fit:fill;
-  }
-
-  /* Export Options */
-  .export-opts{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
-  .export-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .export-row label{ font-size:12px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
-  .export-row select{
-    background:var(--panel-2); border:1px solid var(--border); color:var(--text); border-radius:8px;
-    padding:7px 10px; font-family:'JetBrains Mono',monospace; font-size:12px; cursor:pointer;
-  }
-  .export-row input[type=range]{ flex:1; margin:0; }
-  .export-row .exp-val{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--accent); width:36px; text-align:right; flex-shrink:0; }
-
-  .privacy-note{
-    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-dim);
-    padding:10px 22px 0; line-height:1.5;
-  }
-
-  .download-bar{
-    padding:18px 22px; border-top:1px solid var(--border); background:var(--panel-2);
-  }
-
-  footer{
-    text-align:center; color:var(--text-dim); font-family:'JetBrains Mono',monospace;
-    font-size:11px; padding:30px 20px; letter-spacing:0.5px;
-  }
-
-  @media (max-width:880px){
-    .ws-grid{ flex-direction:column; }
-    .sidebar{ width:100%; }
-    header{ padding:18px 20px; }
-    main{ padding:20px; }
-  }
+:root{--bg:#06060f;--tx:#eef0ff;--dim:#9aa2d0;--a:#5cf2ff;--b:#8b6bff;--c:#ff4fd8;--g:rgba(255,255,255,.065);--gb:rgba(255,255,255,.15);--hi:rgba(255,255,255,.3);--in:rgba(0,0,0,.25)}
+body.light{--bg:#e8ebfb;--tx:#14163a;--dim:#575d92;--g:rgba(255,255,255,.55);--gb:rgba(255,255,255,.95);--hi:#fff;--in:rgba(20,22,58,.08)}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{min-height:100vh;display:flex;flex-direction:column;color:var(--tx);font:500 15px/1.55 Manrope,system-ui,sans-serif;background:radial-gradient(1100px 700px at 15% -10%,#221a6b,transparent),radial-gradient(900px 600px at 100% 100%,#4a1060,transparent),var(--bg)}
+body.light{background:radial-gradient(1000px 600px at 10% 0,#c7d2ff,transparent),radial-gradient(900px 600px at 100% 100%,#f3c6ee,transparent),var(--bg)}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+body.light #bg{opacity:.55}
+header,main,footer{position:relative;z-index:1}
+header{display:flex;justify-content:space-between;align-items:center;padding:18px clamp(16px,4vw,44px)}
+.brand{display:flex;align-items:center;gap:12px;font:800 1.15rem Unbounded,sans-serif;letter-spacing:.04em}
+.orb{width:30px;height:30px;border-radius:10px;transform:rotate(45deg);background:conic-gradient(from 0deg,var(--a),var(--b),var(--c),var(--a));box-shadow:0 0 24px var(--b);animation:spin 9s linear infinite}
+@keyframes spin{to{filter:hue-rotate(360deg)}}
+.hb{display:flex;gap:8px}
+.ib{border:1px solid var(--gb);background:var(--g);color:var(--tx);border-radius:12px;padding:8px 14px;font:600 13px Manrope;cursor:pointer;backdrop-filter:blur(14px)}
+.ib:hover{border-color:var(--a)}
+button{font-family:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+main{flex:1;padding:8px clamp(16px,4vw,44px) 30px;width:100%;max-width:1280px;margin:auto}
+.glass{background:var(--g);border:1px solid var(--gb);border-radius:26px;backdrop-filter:blur(28px) saturate(170%);-webkit-backdrop-filter:blur(28px) saturate(170%);box-shadow:inset 0 1px 0 var(--hi),0 40px 90px -30px rgba(0,0,0,.6)}
+#hero{max-width:820px;margin:6vh auto 0;text-align:center;padding:clamp(26px,5vw,56px)}
+h1{font:800 clamp(1.9rem,5vw,3.4rem)/1.1 Unbounded,sans-serif;letter-spacing:-.02em;background:linear-gradient(100deg,var(--tx) 30%,var(--a) 65%,var(--c));-webkit-background-clip:text;background-clip:text;color:transparent}
+#hero p{color:var(--dim);margin:16px auto 28px;max-width:52ch}
+.drop{display:block;cursor:pointer;border:2px dashed var(--gb);border-radius:20px;padding:34px 18px;transition:.25s;background:var(--in)}
+.drop:hover,.drop.dg{border-color:var(--a);box-shadow:0 0 40px -6px var(--a);transform:translateY(-3px)}
+.drop b{display:block;font:600 1.15rem Unbounded;margin-bottom:6px}
+.drop span{color:var(--dim);font-size:.9rem}
+.tri{display:flex;gap:12px;justify-content:center;margin-top:24px}
+.tri div{font:800 1.4rem Unbounded;padding:10px 18px;border-radius:16px;border:1px solid var(--gb);background:var(--g)}
+.tri small{font:600 .7rem Manrope;color:var(--dim);margin-left:4px}
+#ws{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr);gap:22px;align-items:start}
+.stage{padding:16px;position:relative}
+.cmp{position:relative;width:min(100%,calc(64vh*var(--ar,1.4)));aspect-ratio:var(--ar,1.4);margin:auto;border-radius:16px;overflow:hidden;background:repeating-conic-gradient(#ffffff14 0 25%,transparent 0 50%) 0 0/20px 20px}
+.cmp img{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}
+.dv{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;box-shadow:0 0 16px var(--a)}
+.tag{position:absolute;top:10px;padding:4px 11px;border-radius:99px;font:500 11px 'JetBrains Mono',monospace;background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(8px)}
+.l{left:10px}.r{right:10px}
+#sl{width:100%;margin-top:14px;accent-color:var(--a)}
+.stage.busy::after{content:'Finding the sharpest result…';position:absolute;inset:0;display:grid;place-items:center;border-radius:26px;background:rgba(6,6,15,.5);backdrop-filter:blur(5px);font:500 13px 'JetBrains Mono',monospace;color:#fff;pointer-events:none}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.stats div{background:var(--in);border-radius:16px;padding:10px 12px}
+.stats small{color:var(--dim);font-size:.75rem}
+.stats b{display:block;font:600 1rem Unbounded}
+.stats em{font:normal 500 .7rem 'JetBrains Mono',monospace;color:var(--a)}
+.stats em.bad{color:#ff7a7a}
+.panel{padding:22px}
+h3{font:600 .85rem Manrope;color:var(--dim);margin:20px 0 9px}
+h3:first-child{margin-top:0}
+.chips{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.chips button{border:1px solid var(--gb);background:var(--in);border-radius:18px;padding:14px 6px;cursor:pointer;transition:.2s;text-align:center}
+.chips .big{grid-column:span 2}.chips .sm{grid-column:span 3;padding:9px}
+.chips button:hover{transform:translateY(-3px);border-color:var(--a)}
+.chips b{font:800 1.8rem Unbounded}.chips .sm b{font-size:1.15rem}
+.chips u{text-decoration:none;font:600 .7rem Manrope;color:var(--dim);margin-left:3px}
+.chips i{display:block;font:normal 500 .62rem 'JetBrains Mono',monospace;color:var(--dim);min-height:1em;margin-top:3px}
+.chips .on{background:linear-gradient(135deg,rgba(92,242,255,.25),rgba(139,107,255,.3));border-color:var(--a);box-shadow:0 0 30px -4px var(--a),inset 0 1px 0 var(--hi)}
+.cu{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--dim);font-size:.85rem}
+input[type=number]{width:100px;background:var(--in);border:1px solid var(--gb);border-radius:12px;padding:8px 10px;color:var(--tx);font:500 13px 'JetBrains Mono',monospace}
+.seg{display:flex;gap:6px;background:var(--in);padding:5px;border-radius:15px}
+.seg button{flex:1;border:0;background:none;padding:9px 6px;border-radius:11px;cursor:pointer;font-weight:600;font-size:.88rem}
+.seg .on{background:var(--g);box-shadow:inset 0 0 0 1px var(--a),0 0 18px -4px var(--a)}
+.hint{color:var(--dim);font-size:.8rem;margin-top:8px}
+.rg{display:block;font-size:.85rem;color:var(--dim);margin-bottom:8px}
+.rg span{float:right;font-family:'JetBrains Mono',monospace}
+.rg input{width:100%;accent-color:var(--b);display:block}
+.ck{display:flex;gap:8px;align-items:center;font-size:.88rem;cursor:pointer}
+.ck input{accent-color:var(--a);width:16px;height:16px}
+.cta{border:0;border-radius:16px;padding:15px 22px;font:800 .95rem Unbounded;color:#06061a;cursor:pointer;background:linear-gradient(100deg,var(--a),var(--b),var(--c));background-size:200% 100%;transition:.3s;box-shadow:0 10px 40px -10px var(--b)}
+.cta:hover{background-position:100% 0;transform:translateY(-2px)}
+.ghost{border:1px solid var(--gb);background:var(--g);border-radius:16px;padding:13px 18px;font-weight:600;cursor:pointer;transition:.2s}
+.ghost:hover:not(:disabled){border-color:var(--a)}
+.act{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-top:20px}
+.wide{width:100%;margin-top:16px}
+.lnk{background:none;border:0;color:var(--dim);cursor:pointer;margin-top:12px;text-decoration:underline;font-size:.85rem}
+#ov{position:fixed;inset:0;z-index:9;background:rgba(4,4,14,.82);backdrop-filter:blur(14px);display:flex;flex-direction:column}
+.ovb{flex:1;overflow:auto;display:grid;place-items:center;padding:20px}
+.ovb img{image-rendering:auto;box-shadow:0 30px 80px #000;border-radius:6px}
+.ovb img.fit{max-width:100%;max-height:calc(100vh - 120px)}
+.ovt{display:flex;gap:10px;align-items:center;justify-content:center;padding:14px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,30px);opacity:0;z-index:20;padding:12px 20px;border-radius:14px;background:rgba(20,20,50,.9);color:#fff;border:1px solid var(--gb);transition:.3s;pointer-events:none}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+footer{text-align:center;padding:20px;color:var(--dim);font-size:.85rem}
+footer b{color:var(--a);font-family:Unbounded;font-weight:600}
+@media(max-width:920px){#ws{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-
-<div class="bg-layer bg-aurora"><span></span><span></span><span></span></div>
-<div class="bg-layer bg-grid"></div>
-<div class="bg-layer bg-scan"></div>
-
+<canvas id="bg"></canvas>
 <header>
-  <div class="brand">
-    <div class="brand-mark">◎</div>
-    <div class="brand-text">
-      <h1>Image Follow-up</h1>
-      <span>Ultra-Compression Photo Lab</span>
-    </div>
-  </div>
-  <div class="header-actions">
-    <button class="theme-toggle" id="themeToggle" type="button">
-      <span class="theme-dot">☾</span><span id="themeLabel">Dark</span>
-    </button>
-    <button class="reset-link" id="resetBtn">↺ Start over</button>
-  </div>
+  <div class="brand"><i class="orb"></i>KILOPIX</div>
+  <div class="hb"><button class="ib" id="t3d" title="Turn the 3D background on or off">3D</button><button class="ib" id="tth" title="Switch light / dark">Theme</button></div>
 </header>
-
 <main>
+  <section id="hero" class="glass">
+    <h1>Hit 20 KB without losing the picture</h1>
+    <p>Pick a size limit and KiloPix finds the sharpest image that fits under it. Everything runs in your browser, nothing is uploaded.</p>
+    <label class="drop" id="dz"><b>Drop an image, paste it, or click to browse</b><span>JPG, PNG or WebP</span><input type="file" id="fi" accept="image/*" hidden></label>
+    <div class="tri"><div>20<small>KB</small></div><div>25<small>KB</small></div><div>30<small>KB</small></div></div>
+  </section>
 
-  <div id="dropzone">
-    <span class="eyebrow">Drag &amp; drop · or click</span>
-    <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="#49D9C7" stroke-width="1.6">
-      <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <h2>Bring in a photo or document</h2>
-    <p>PNG, JPG or WebP · Compress cleanly to 20 KB or 30 KB with clear, readable text</p>
-    <button class="browse-btn" type="button" id="browseBtn">Choose an image</button>
-    <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp">
-  </div>
-
-  <div id="workspace">
-    <div class="ws-grid">
-
-      <div class="preview-col">
-        <div class="canvas-frame">
-          <div class="scanline" id="scanline"></div>
-          <div class="compare-wrap" id="compareWrap">
-            <canvas id="canvas"></canvas>
-            <img class="compare-img" id="compareImg" alt="Original photo">
-          </div>
-        </div>
-        
-        <!-- Live status readout -->
-        <div class="readout">
-          <span>Dimensions: <b id="roDims">–</b></span>
-          <span>Original: <b id="roOrigSize">–</b></span>
-          <span>View status: <b id="roSize">–</b></span>
-        </div>
-
-        <!-- Compressed Result Inspection Bar -->
-        <div class="inspect-banner" id="inspectBanner">
-          <div class="inspect-stat">
-            <span>Compressed Result:</span>
-            <span class="inspect-badge" id="inspectBadge">30 KB (Pass)</span>
-            <span id="inspectDims" style="color:var(--text-dim); font-size:11px;">(0 × 0 px)</span>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button class="chip-btn" id="inspectDownloadBtn" style="padding:5px 12px; background:var(--accent); color:#04211E; font-weight:700;">Download File</button>
-            <button class="chip-btn" id="inspectCloseBtn" style="padding:5px 10px;">Back to Original</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="sidebar">
-        <div class="tabs">
-          <button class="tab-btn active" data-tab="decrease">Compress Size</button>
-          <button class="tab-btn" data-tab="increase">Scale &amp; Res</button>
-          <button class="tab-btn" data-tab="filters">Filters &amp; FX</button>
-          <button class="tab-btn" data-tab="watermark">Watermark</button>
-        </div>
-
-        <!-- DECREASE SIZE / COMPRESS -->
-        <div class="tab-panel active" id="panel-decrease">
-          <p class="section-title">Strict Target Compression</p>
-          <p class="section-sub">Engineered for government portals (UPSC, SSC, State exams) where images must be strictly under 20KB / 30KB without turning blurry or blocky.</p>
-          
-          <label style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim);">Strict Target Limit:</label>
-          <div class="target-chips" id="targetChips">
-            <button class="chip-btn ultra" data-kb="20">20 KB</button>
-            <button class="chip-btn ultra active" data-kb="30">30 KB</button>
-            <button class="chip-btn" data-kb="50">50 KB</button>
-            <button class="chip-btn" data-kb="100">100 KB</button>
-          </div>
-
-          <div class="slider-row">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:12px; color:var(--text-dim); font-family:'JetBrains Mono',monospace;">Custom Target Limit:</span>
-              <span class="slider-value" id="kbValue">30 KB</span>
-            </div>
-            <input type="range" id="kbSlider" min="0" max="9" step="1" value="1">
-          </div>
-
-          <!-- Optimization Profile Mode -->
-          <div class="opt-selector-wrap">
-            <label style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim);">Compression Profile:</label>
-            <div class="opt-chips">
-              <div class="opt-chip active" id="optDoc" data-mode="doc">
-                <span class="opt-chip-title">📄 Text &amp; Screenshot</span>
-                <span class="opt-chip-desc">Keeps resolution large for readability</span>
-              </div>
-              <div class="opt-chip" id="optPhoto" data-mode="photo">
-                <span class="opt-chip-title">🖼️ Photo &amp; Portrait</span>
-                <span class="opt-chip-desc">Smoother skin tones &amp; gradients</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="compress-info">
-            <div>
-              <span>Target:</span>
-              <span class="status-badge tight" id="compressModeBadge">Strict 30 KB Max</span>
-            </div>
-            <div>
-              <span>Portal Safety:</span>
-              <span style="color:var(--success); font-weight:600;">Guaranteed &le; Target</span>
-            </div>
-            <div>
-              <span>Output Format:</span>
-              <select id="compressFormatSelect" style="background:transparent; border:none; color:var(--accent); font-family:'JetBrains Mono',monospace; font-size:11px; cursor:pointer;">
-                <option value="jpeg" style="background:var(--panel-2); color:var(--text);">JPEG (.jpg) [Government Standard]</option>
-                <option value="webp" style="background:var(--panel-2); color:var(--text);">WebP (.webp) [Modern]</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="action-btn-group">
-            <button class="primary-btn amber" id="compressBtn">⚡ Compress &amp; Download (<span id="btnKbTarget">30 KB</span>)</button>
-            <button class="primary-btn secondary" id="previewCompressBtn">🔍 Preview Compressed Result</button>
-          </div>
-        </div>
-
-        <!-- INCREASE QUALITY / RESOLUTION -->
-        <div class="tab-panel" id="panel-increase">
-          <p class="section-title">Increase Resolution</p>
-          <p class="section-sub">Upscales and sharpens the image for a cleaner, higher-res output.</p>
-          <div class="preset-grid" id="upscaleGrid"></div>
-        </div>
-
-        <!-- FILTERS & FX (ENHANCED SUITE) -->
-        <div class="tab-panel" id="panel-filters">
-          <p class="section-title">Filters &amp; Image Enhancements</p>
-          <p class="section-sub">Fine-tune adjustments, clean up documents, or apply aesthetic photo effects.</p>
-
-          <!-- 1. Quick One-Click Aesthetic Presets -->
-          <div class="filter-subhead">
-            <span>Aesthetic Presets</span>
-            <span class="filter-subhead-action" id="resetPresetsBtn">Reset Presets</span>
-          </div>
-          <div class="style-preset-grid" id="stylePresetGrid">
-            <div class="style-chip active" data-preset="original">
-              <span class="style-chip-icon">◎</span>
-              <span class="style-chip-name">Original</span>
-            </div>
-            <div class="style-chip" data-preset="auto">
-              <span class="style-chip-icon">✦</span>
-              <span class="style-chip-name">Auto Pop</span>
-            </div>
-            <div class="style-chip" data-preset="clean_doc">
-              <span class="style-chip-icon">📄</span>
-              <span class="style-chip-name">Clean Doc</span>
-            </div>
-            <div class="style-chip" data-preset="cyberpunk">
-              <span class="style-chip-icon">🌆</span>
-              <span class="style-chip-name">Cyberpunk</span>
-            </div>
-            <div class="style-chip" data-preset="vintage">
-              <span class="style-chip-icon">🎞️</span>
-              <span class="style-chip-name">Vintage</span>
-            </div>
-            <div class="style-chip" data-preset="noir">
-              <span class="style-chip-icon">🎬</span>
-              <span class="style-chip-name">B&amp;W Noir</span>
-            </div>
-            <div class="style-chip" data-preset="golden">
-              <span class="style-chip-icon">🌅</span>
-              <span class="style-chip-name">Golden</span>
-            </div>
-            <div class="style-chip" data-preset="nordic">
-              <span class="style-chip-icon">❄️</span>
-              <span class="style-chip-name">Cool Blue</span>
-            </div>
-          </div>
-
-          <!-- 2. Precision Adjustment Sliders -->
-          <div class="filter-subhead">
-            <span>Fine Adjustments</span>
-            <span class="filter-subhead-action" id="resetSlidersBtn">↺ Reset Sliders</span>
-          </div>
-          <div class="slider-group">
-            <div class="filter-slider-row">
-              <div class="filter-slider-head">
-                <span>☀️ Brightness</span>
-                <span class="filter-slider-val" id="valBrightness">0%</span>
-              </div>
-              <input type="range" id="slBrightness" min="-100" max="100" value="0">
-            </div>
-
-            <div class="filter-slider-row">
-              <div class="filter-slider-head">
-                <span>🌓 Contrast</span>
-                <span class="filter-slider-val" id="valContrast">0%</span>
-              </div>
-              <input type="range" id="slContrast" min="-100" max="100" value="0">
-            </div>
-
-            <div class="filter-slider-row">
-              <div class="filter-slider-head">
-                <span>🎨 Saturation</span>
-                <span class="filter-slider-val" id="valSaturation">0%</span>
-              </div>
-              <input type="range" id="slSaturation" min="-100" max="100" value="0">
-            </div>
-
-            <div class="filter-slider-row">
-              <div class="filter-slider-head">
-                <span>🌡️ Temperature (Warm/Cool)</span>
-                <span class="filter-slider-val" id="valWarmth">0</span>
-              </div>
-              <input type="range" id="slWarmth" min="-100" max="100" value="0">
-            </div>
-
-            <div class="filter-slider-row">
-              <div class="filter-slider-head">
-                <span>🔍 Clarity &amp; Sharpen</span>
-                <span class="filter-slider-val" id="valSharpen">0%</span>
-              </div>
-              <input type="range" id="slSharpen" min="0" max="100" value="0">
-            </div>
-
-            <div class="filter-slider-row">
-              <div class="filter-slider-head">
-                <span>🔦 Exposure Boost</span>
-                <span class="filter-slider-val" id="valExposure">0%</span>
-              </div>
-              <input type="range" id="slExposure" min="-50" max="50" value="0">
-            </div>
-          </div>
-
-          <!-- 3. Creative & Functional Effect Toggles -->
-          <div class="filter-subhead">
-            <span>Creative Effects</span>
-            <span class="filter-subhead-action" id="resetTogglesBtn">Clear All</span>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Grayscale</div>
-              <div class="desc">Clean monochrome black &amp; white</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxGrayscale"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Sepia Patina</div>
-              <div class="desc">Warm nostalgic antique tone</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxSepia"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Invert / Negative</div>
-              <div class="desc">Reverses colors &amp; darkens whites</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxNegative"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Cinematic Vignette</div>
-              <div class="desc">Subtle dark corner framing</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxVignette"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Soft Blur Focus</div>
-              <div class="desc">Gentle diffusion for portraits</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxBlur"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Pencil Sketch / Edge</div>
-              <div class="desc">Contour line drawing effect</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxSketch"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">8-Bit Pixelate</div>
-              <div class="desc">Retro arcade block mosaic</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxPixelate"><span class="slider-toggle"></span></label>
-          </div>
-
-          <div class="filter-row">
-            <div>
-              <div class="name">Neon Duotone</div>
-              <div class="desc">Cyberpunk teal &amp; hot pink map</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="fxDuotone"><span class="slider-toggle"></span></label>
-          </div>
-        </div>
-
-        <!-- WATERMARK -->
-        <div class="tab-panel" id="panel-watermark">
-          <div class="filter-row" style="border-bottom:none;">
-            <div>
-              <div class="name">Add date &amp; time stamp</div>
-              <div class="desc">Stamps current time &amp; date</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="wmToggle"><span class="slider-toggle"></span></label>
-          </div>
-          <div class="wm-datetime">
-            <div class="wm-field"><label for="wmDay">Day</label><input type="number" id="wmDay" min="1" max="31"></div>
-            <div class="wm-field"><label for="wmMonth">Month</label><input type="number" id="wmMonth" min="1" max="12"></div>
-            <div class="wm-field"><label for="wmYear">Year</label><input type="number" id="wmYear" min="1970" max="2100"></div>
-          </div>
-          <div class="wm-preview" id="wmPreview">Preview: —</div>
-        </div>
-
-        <div class="privacy-note">🔒 All processing happens 100% locally on your browser. Images never leave your device.</div>
-
-        <div class="download-bar">
-          <div class="export-opts">
-            <div class="export-row">
-              <label for="exportFormat">Export format</label>
-              <select id="exportFormat">
-                <option value="jpeg">JPEG (smaller)</option>
-                <option value="webp">WebP (modern)</option>
-                <option value="png">PNG (lossless)</option>
-              </select>
-            </div>
-            <div class="export-row" id="exportQualityRow">
-              <label for="exportQuality">Quality</label>
-              <input type="range" id="exportQuality" min="10" max="100" value="85">
-              <span class="exp-val" id="exportQualityVal">85%</span>
-            </div>
-          </div>
-          <button class="primary-btn" id="downloadBtn">⬇ Standard Export</button>
-        </div>
-      </div>
-
+  <section id="ws" hidden>
+    <div class="glass stage" id="stage">
+      <div class="cmp" id="cmp"><img id="io" alt="Original image"><img id="ir" alt="Compressed image"><div class="dv" id="dv"></div><span class="tag l" id="tl">–</span><span class="tag r">Original</span></div>
+      <input type="range" id="sl" min="0" max="100" value="50" aria-label="Compare compressed and original">
+      <div class="stats" id="stats"></div>
     </div>
-  </div>
-
+    <aside class="glass panel">
+      <h3>Size limit</h3>
+      <div class="chips" id="chips">
+        <button class="big" data-kb="20"><b>20</b><u>KB</u><i></i></button>
+        <button class="big on" data-kb="25"><b>25</b><u>KB</u><i></i></button>
+        <button class="big" data-kb="30"><b>30</b><u>KB</u><i></i></button>
+        <button class="sm" data-kb="40"><b>40</b><u>KB</u><i></i></button>
+        <button class="sm" data-kb="50"><b>50</b><u>KB</u><i></i></button>
+      </div>
+      <div class="cu"><label for="cu">Or any size</label><input type="number" id="cu" min="3" max="5000" placeholder="35"> KB</div>
+      <h3>Format</h3>
+      <div class="seg" id="fmt"><button class="on" data-v="jpeg">JPG</button><button data-v="png">PNG</button><button data-v="webp">WebP</button></div>
+      <p class="hint" id="hint">JPG works everywhere and suits photos.</p>
+      <h3>Content type</h3>
+      <div class="seg" id="mode"><button class="on" data-v="photo">Photo</button><button data-v="doc">Document / signature</button></div>
+      <h3>Fine-tune</h3>
+      <label class="rg">Brightness <span id="bv">100%</span><input type="range" id="br" min="60" max="150" value="100"></label>
+      <label class="rg">Contrast <span id="cv">100%</span><input type="range" id="ct" min="60" max="160" value="100"></label>
+      <label class="ck"><input type="checkbox" id="sh" checked> Sharpen after resizing</label>
+      <button class="ghost wide" id="all">Compare all sizes</button>
+      <div class="act"><button class="cta" id="dl">Download</button><button class="ghost" id="pv">Preview</button></div>
+      <button class="lnk" id="nw">Choose another image</button>
+    </aside>
+  </section>
 </main>
+<footer>Digital Image Processing project &nbsp;|&nbsp; 6th Semester &nbsp;|&nbsp; Frontend Design &nbsp;|&nbsp; Built by <b>@MJA</b></footer>
 
-<footer>IMAGE FOLLOW-UP & ULTRA-COMPRESSOR · processed strictly in-browser</footer>
+<div id="ov" hidden>
+  <div class="ovb"><img id="oi" class="fit" alt="Compressed preview"></div>
+  <div class="ovt"><span id="ot"></span><button class="ghost" id="of">Fit / 100% size</button><button class="cta" id="od">Download</button><button class="ghost" id="oc">Close</button></div>
+</div>
+<div id="toast"></div>
 
 <script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const S={bmp:null,name:'image',kb:25,fmt:'jpeg',mode:'photo',br:100,ct:100,sh:true,res:null,gen:0,cache:{},osz:0};
+S.webp=document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp');
+const mk=(w,h)=>Object.assign(document.createElement('canvas'),{width:w,height:h});
+const blobOf=(c,t,q)=>new Promise(r=>c.toBlob(r,t,q));
+const fmtKB=b=>b>1048576?(b/1048576).toFixed(2)+' MB':(b/1024).toFixed(b<102400?1:0)+' KB';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2800)}
+
+/* ---------- image processing ---------- */
+function tone(g,w,h){
+  const d=g.getImageData(0,0,w,h),p=d.data,L=p.length,b=S.br/100,k=S.ct/100,doc=S.mode==='doc';let lo=0,sc=1;
+  if(doc){const H=new Uint32Array(256),n=L/4;for(let i=0;i<L;i+=4)H[(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0]++;
+    let a=0,hi=255;for(let v=0;v<256;v++){a+=H[v];if(a>n*.02){lo=v;break}}a=0;for(let v=255;v>=0;v--){a+=H[v];if(a>n*.02){hi=v;break}}sc=255/Math.max(40,hi-lo)}
+  for(let i=0;i<L;i+=4){let r=p[i],q=p[i+1],z=p[i+2];if(doc)r=q=z=((r*.299+q*.587+z*.114)-lo)*sc;
+    p[i]=(r*b-128)*k+128;p[i+1]=(q*b-128)*k+128;p[i+2]=(z*b-128)*k+128}
+  g.putImageData(d,0,0)}
+function sharpen(g,w,h,a){
+  const s=g.getImageData(0,0,w,h),o=g.createImageData(w,h),A=s.data,O=o.data;O.set(A);
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=(y*w+x)*4;for(let k=0;k<3;k++)O[i+k]=A[i+k]*(1+4*a)-a*(A[i+k-4]+A[i+k+4]+A[i+k-w*4]+A[i+k+w*4])}
+  g.putImageData(o,0,0)}
+/* resize in halving steps (much sharper than one big jump), then tone + sharpen */
+function render(w){
+  const h=Math.max(1,Math.round(w*S.bmp.height/S.bmp.width));let cur=S.bmp,cw=cur.width,ch=cur.height;
+  while(cw/2>=w*1.01&&cw>2){const c=mk(Math.max(1,cw>>1),Math.max(1,ch>>1)),g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(cur,0,0,c.width,c.height);cur=c;cw=c.width;ch=c.height}
+  const c=mk(w,h),g=c.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,w,h);g.imageSmoothingQuality='high';g.drawImage(cur,0,0,w,h);
+  tone(g,w,h);if(S.sh&&w>40)sharpen(g,w,h,.45);return c}
+
+/* ---------- palette PNG (median-cut quantiser + own PNG writer) ---------- */
+function pal(p,n){
+  const N=p.length>>2,sp=Math.max(1,N/30000|0),px=[];for(let i=0;i<N;i+=sp)px.push([p[i*4],p[i*4+1],p[i*4+2]]);
+  const bx=[px];
+  while(bx.length<n){let bi=-1,bc=0,bs=0;
+    bx.forEach((b,i)=>{if(b.length<2)return;for(let c=0;c<3;c++){let mn=255,mx=0;for(const q of b){if(q[c]<mn)mn=q[c];if(q[c]>mx)mx=q[c]}const s=(mx-mn)*Math.sqrt(b.length);if(s>bs){bs=s;bi=i;bc=c}}});
+    if(bi<0)break;const b=bx[bi].sort((x,y)=>x[bc]-y[bc]),m=b.length>>1;bx.splice(bi,1,b.slice(0,m),b.slice(m))}
+  return bx.map(b=>{const s=[0,0,0];for(const q of b){s[0]+=q[0];s[1]+=q[1];s[2]+=q[2]}return s.map(v=>Math.round(v/b.length))})}
+const CT=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc=u=>{let c=-1;for(let i=0;i<u.length;i++)c=CT[(c^u[i])&255]^(c>>>8);return(c^-1)>>>0};
+function chunk(t,d){const o=new Uint8Array(12+d.length),v=new DataView(o.buffer);v.setUint32(0,d.length);for(let i=0;i<4;i++)o[4+i]=t.charCodeAt(i);o.set(d,8);v.setUint32(8+d.length,crc(o.subarray(4,8+d.length)));return o}
+async function deflate(u){const cs=new CompressionStream('deflate'),w=cs.writable.getWriter();w.write(u);w.close();return new Uint8Array(await new Response(cs.readable).arrayBuffer())}
+async function encPng(c,n){
+  if(!window.CompressionStream)return blobOf(c,'image/png');
+  const w=c.width,h=c.height,p=c.getContext('2d').getImageData(0,0,w,h).data,P=pal(p,n),m=P.length,lut=new Int16Array(32768).fill(-1),ix=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++){const r=p[i*4],g=p[i*4+1],b=p[i*4+2],k=(r>>3)<<10|(g>>3)<<5|(b>>3);let v=lut[k];
+    if(v<0){let bd=1e9;for(let j=0;j<m;j++){const d=(P[j][0]-r)**2+(P[j][1]-g)**2+(P[j][2]-b)**2;if(d<bd){bd=d;v=j}}lut[k]=v}ix[i]=v}
+  const bd=m<=2?1:m<=4?2:m<=16?4:8,rb=Math.ceil(w*bd/8),raw=new Uint8Array((rb+1)*h);
+  for(let y=0;y<h;y++){const o=y*(rb+1)+1;for(let x=0;x<w;x++)raw[o+(x*bd>>3)]|=ix[y*w+x]<<(8-bd-(x*bd&7))}
+  const z=await deflate(raw),hd=new Uint8Array(13),dv=new DataView(hd.buffer);dv.setUint32(0,w);dv.setUint32(4,h);hd[8]=bd;hd[9]=3;
+  return new Blob([new Uint8Array([137,80,78,71,13,10,26,10]),chunk('IHDR',hd),chunk('PLTE',Uint8Array.from(P.flat())),chunk('IDAT',z),chunk('IEND',new Uint8Array())],{type:'image/png'})}
+
+/* ---------- the size-fitting search ---------- */
+/* 1) find the widest size that fits at a good quality, 2) spend leftover bytes on more quality / colours */
+async function compute(kb,gen){
+  const T=kb*1024,png=S.fmt==='png',mime='image/'+S.fmt,maxW=Math.min(S.bmp.width,1600);
+  const enc=png?(w,n)=>encPng(render(w),n):(w,q)=>blobOf(render(w),mime,q);
+  const base=png?(S.mode==='doc'?6:40):(S.fmt==='webp'?.8:.74);
+  let lo=Math.min(24,maxW),hi=maxW,best=null;
+  while(hi-lo>2){if(gen!==S.gen)return null;const m=(lo+hi)>>1,b=await enc(m,base);if(b.size<=T){best={w:m,b,q:base};lo=m}else hi=m-1}
+  if(!best){for(const v of(png?[16,8,4,2]:[.6,.45,.3,.2,.12,.06])){const b=await enc(lo,v);best={w:lo,b,q:v};if(b.size<=T)break}}
+  else if(png){for(const n of(S.mode==='doc'?[16,12]:[256,160,96,64])){const b=await enc(best.w,n);if(b.size<=T){best.b=b;best.q=n;break}}}
+  else{let a=base,z=.98;for(let i=0;i<6;i++){if(gen!==S.gen)return null;const q=(a+z)/2,b=await enc(best.w,q);if(b.size<=T){best.b=b;best.q=q;a=q}else z=q}}
+  if(gen!==S.gen)return null;
+  const r={b:best.b,w:best.w,h:Math.max(1,Math.round(best.w*S.bmp.height/S.bmp.width)),kb,fmt:S.fmt};
+  r.url=URL.createObjectURL(r.b);S.cache[kb]=r;return r}
+
+/* ---------- UI ---------- */
+function sub(r){const i=$(`#chips [data-kb="${r.kb}"] i`);if(i)i.textContent=fmtKB(r.b.size)+' · '+r.w+'px'}
+function show(r){
+  S.res=r;$('#ir').src=r.url;$('#tl').textContent='Result '+fmtKB(r.b.size);
+  const ok=r.b.size<=r.kb*1024;
+  $('#stats').innerHTML=[['Result size',fmtKB(r.b.size),ok?'under '+r.kb+' KB':'over the limit',ok],['Dimensions',r.w+' × '+r.h,'pixels',1],['Original',fmtKB(S.osz),'−'+Math.max(0,Math.round(100-r.b.size/S.osz*100))+'% smaller',1],['Pixels kept',Math.min(100,Math.round(r.w*r.h/(S.bmp.width*S.bmp.height)*100))+'%','of the original',1]]
+    .map(([a,b,c,o])=>`<div><small>${a}</small><b>${b}</b><em class="${o?'':'bad'}">${c}</em></div>`).join('');
+  sub(r);$('#stage').classList.remove('busy')}
+async function run(){
+  if(!S.bmp)return;const g=S.gen,k=S.kb;$('#stage').classList.add('busy');
+  let r=S.cache[k];
+  try{r=r||await compute(k,g)}catch(e){console.error(e);toast('Could not process this image');$('#stage').classList.remove('busy');return}
+  if(r&&g===S.gen&&k===S.kb)show(r)}
+let dt;function later(){clearTimeout(dt);dt=setTimeout(run,220)}
+function changed(){S.gen++;S.cache={};$$('#chips i').forEach(i=>i.textContent='');later()}
+function setKB(k,fromChip){S.kb=k;$$('#chips button').forEach(b=>b.classList.toggle('on',fromChip&&+b.dataset.kb===k));if(fromChip)$('#cu').value='';later()}
+$('#chips').onclick=e=>{const b=e.target.closest('[data-kb]');if(b)setKB(+b.dataset.kb,1)};
+$('#cu').oninput=e=>{const v=+e.target.value;if(v>=3&&v<=5000)setKB(v,0)};
+const HINT={jpeg:'JPG works everywhere and suits photos.',webp:'WebP stays sharper than JPG at the same KB.',png:'PNG is lossless, so the size limit is met by reducing colours and pixels. Best for signatures, logos and scans.'};
+[['#fmt','fmt'],['#mode','mode']].forEach(([id,k])=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.v==='webp'&&!S.webp)return toast('This browser cannot export WebP. Use JPG or PNG.');
+  S[k]=b.dataset.v;$$(id+' button').forEach(x=>x.classList.toggle('on',x===b));if(k==='fmt')$('#hint').textContent=HINT[S.fmt];changed()});
+$('#br').oninput=e=>{S.br=+e.target.value;$('#bv').textContent=S.br+'%';changed()};
+$('#ct').oninput=e=>{S.ct=+e.target.value;$('#cv').textContent=S.ct+'%';changed()};
+$('#sh').onchange=e=>{S.sh=e.target.checked;changed()};
+const cmpv=v=>{$('#ir').style.clipPath=`inset(0 ${100-v}% 0 0)`;$('#dv').style.left=v+'%'};
+$('#sl').oninput=e=>cmpv(e.target.value);
+$('#all').onclick=async()=>{const g=S.gen,b=$('#all');b.disabled=true;b.textContent='Working through all sizes…';
+  for(const k of[20,25,30,40,50]){if(g!==S.gen)break;const r=S.cache[k]||await compute(k,g);if(!r)break;sub(r)}
+  b.disabled=false;b.textContent='Compare all sizes'};
+function save(r){if(!r)return;const a=document.createElement('a');a.href=r.url;a.download=`${S.name}_${r.kb}KB.${r.fmt==='jpeg'?'jpg':r.fmt}`;a.click();toast('Downloaded '+fmtKB(r.b.size))}
+$('#dl').onclick=()=>save(S.res);$('#od').onclick=()=>save(S.res);
+$('#pv').onclick=()=>{if(!S.res)return;$('#oi').src=S.res.url;$('#oi').className='fit';$('#ot').textContent=`${S.res.w}×${S.res.h}px · ${fmtKB(S.res.b.size)}`;$('#ov').hidden=false};
+$('#of').onclick=()=>$('#oi').classList.toggle('fit');
+const closeOv=()=>$('#ov').hidden=true;$('#oc').onclick=closeOv;addEventListener('keydown',e=>{if(e.key==='Escape')closeOv()});
+$('#nw').onclick=()=>{$('#ws').hidden=true;$('#hero').hidden=false;S.bmp=null;$('#fi').value=''};
+async function load(f){
+  if(!f||!f.type.startsWith('image/'))return toast('That is not an image. Choose a JPG, PNG or WebP file.');
+  try{S.bmp=await createImageBitmap(f)}catch{return toast('This image could not be read.')}
+  S.osz=f.size;S.name=f.name.replace(/\.[^.]+$/,'')||'image';S.gen++;S.cache={};$$('#chips i').forEach(i=>i.textContent='');
+  $('#io').src=URL.createObjectURL(f);$('#cmp').style.setProperty('--ar',S.bmp.width/S.bmp.height);
+  $('#hero').hidden=true;$('#ws').hidden=false;cmpv(50);run()}
+$('#fi').onchange=e=>load(e.target.files[0]);
+addEventListener('paste',e=>{const f=[...(e.clipboardData?.files||[])][0];if(f)load(f)});
+addEventListener('dragover',e=>{e.preventDefault();$('#dz').classList.add('dg')});
+addEventListener('dragleave',()=>$('#dz').classList.remove('dg'));
+addEventListener('drop',e=>{e.preventDefault();$('#dz').classList.remove('dg');load(e.dataTransfer.files[0])});
+$('#tth').onclick=()=>document.body.classList.toggle('light');
+
+/* ---------- 3D background ---------- */
+let on3d=true,go=()=>{};
+$('#t3d').onclick=()=>{on3d=!on3d;$('#bg').style.display=on3d?'':'none';if(on3d)go()};
 (function(){
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('fileInput');
-  const browseBtn = document.getElementById('browseBtn');
-  const workspace = document.getElementById('workspace');
-  const resetBtn = document.getElementById('resetBtn');
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const scanline = document.getElementById('scanline');
-  const roDims = document.getElementById('roDims');
-  const roOrigSize = document.getElementById('roOrigSize');
-  const roSize = document.getElementById('roSize');
-
-  // Inspection Banner
-  const inspectBanner = document.getElementById('inspectBanner');
-  const inspectBadge = document.getElementById('inspectBadge');
-  const inspectDims = document.getElementById('inspectDims');
-  const inspectDownloadBtn = document.getElementById('inspectDownloadBtn');
-  const inspectCloseBtn = document.getElementById('inspectCloseBtn');
-  let currentCompressedBlob = null;
-  let currentCompressedFilename = '';
-
-  let originalImage = null;
-  let originalFileBytes = 0;
-  let baseWidth = 0, baseHeight = 0;
-  let currentWidth = 0, currentHeight = 0;
-  let watermarkOn = false;
-
-  // ---------- Filters & Adjustments State ----------
-  const adjustments = {
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-    warmth: 0,
-    sharpen: 0,
-    exposure: 0
-  };
-
-  const effects = {
-    grayscale: false,
-    sepia: false,
-    negative: false,
-    vignette: false,
-    blur: false,
-    sketch: false,
-    pixelate: false,
-    duotone: false
-  };
-
-  let activePreset = 'original';
-
-  const RES_PRESETS = [
-    { label:'720p HD',  w:1280 },
-    { label:'1080p FHD',w:1920 },
-    { label:'1440p 2K', w:2560 },
-    { label:'2160p 4K', w:3840 },
-  ];
-  
-  const KB_STOPS = [20, 30, 50, 100, 150, 200, 300, 500, 750, 1000];
-
-  function clamp(v){ return v<0?0:(v>255?255:v); }
-
-  // ---------- Upload handling ----------
-  browseBtn.addEventListener('click', ()=> fileInput.click());
-  dropzone.addEventListener('click', ()=> fileInput.click());
-  fileInput.addEventListener('change', e=>{
-    if(e.target.files && e.target.files[0]) loadFile(e.target.files[0]);
-  });
-  ['dragenter','dragover'].forEach(ev=>{
-    dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
-  });
-  ['dragleave','drop'].forEach(ev=>{
-    dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); });
-  });
-  dropzone.addEventListener('drop', e=>{
-    if(e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
-  });
-
-  function loadFile(file){
-    if(!file.type.startsWith('image/')) return;
-    originalFileBytes = file.size;
-    const reader = new FileReader();
-    reader.onload = ev=>{
-      const img = new Image();
-      img.onload = ()=>{
-        originalImage = img;
-        baseWidth = img.width; baseHeight = img.height;
-        currentWidth = baseWidth; currentHeight = baseHeight;
-        
-        resetAllFiltersAndAdjustments();
-        watermarkOn = false;
-        document.getElementById('wmToggle').checked = false;
-        
-        dropzone.style.display='none';
-        workspace.style.display='block';
-        resetBtn.style.display='inline-block';
-        inspectBanner.classList.remove('show');
-        
-        const origKb = Math.round(originalFileBytes / 1024);
-        roOrigSize.textContent = origKb > 1024 ? (origKb/1024).toFixed(2)+' MB' : origKb + ' KB';
-        render(false);
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  resetBtn.addEventListener('click', ()=>{
-    workspace.style.display='none';
-    dropzone.style.display='block';
-    resetBtn.style.display='none';
-    inspectBanner.classList.remove('show');
-    originalImage = null;
-    fileInput.value = '';
-    resetAllFiltersAndAdjustments();
-  });
-
-  // ---------- Theme toggle ----------
-  const themeToggle = document.getElementById('themeToggle');
-  const themeLabel = document.getElementById('themeLabel');
-  const themeDot = themeToggle.querySelector('.theme-dot');
-  themeToggle.addEventListener('click', ()=>{
-    const isLight = document.body.classList.toggle('theme-light');
-    themeToggle.classList.toggle('is-light', isLight);
-    themeLabel.textContent = isLight ? 'Light' : 'Dark';
-    themeDot.textContent = isLight ? '☀' : '☾';
-  });
-
-  // ---------- Tabs ----------
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
-    });
-  });
-
-  // ---------- Resolution presets ----------
-  const upscaleGrid = document.getElementById('upscaleGrid');
-  RES_PRESETS.forEach(preset=>{
-    const btn = document.createElement('button');
-    btn.className = 'preset-btn';
-    btn.innerHTML = `<span class="label">${preset.label}</span><span class="dims">${preset.w}px wide</span>`;
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const scale = preset.w / baseWidth;
-      currentWidth = Math.round(baseWidth*scale);
-      currentHeight = Math.round(baseHeight*scale);
-      render(true);
-    });
-    upscaleGrid.appendChild(btn);
-  });
-
-  // ---------- Target KB Slider & Quick Chips ----------
-  const kbSlider = document.getElementById('kbSlider');
-  const kbValue = document.getElementById('kbValue');
-  const chipBtns = document.querySelectorAll('.chip-btn');
-  const badge = document.getElementById('compressModeBadge');
-  const btnKbTarget = document.getElementById('btnKbTarget');
-
-  function setTargetKB(targetKB){
-    let closestIdx = KB_STOPS.indexOf(targetKB);
-    if(closestIdx === -1){
-      closestIdx = 1; // Default to 30KB
-    }
-    kbSlider.value = closestIdx;
-    updateKbDisplay();
-  }
-
-  function updateKbDisplay(){
-    const kb = KB_STOPS[+kbSlider.value];
-    kbValue.textContent = kb + ' KB';
-    if(btnKbTarget) btnKbTarget.textContent = kb + ' KB';
-
-    chipBtns.forEach(btn => {
-      if(btn.dataset && btn.dataset.kb){
-        if(parseInt(btn.dataset.kb, 10) === kb){
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      }
-    });
-
-    if(kb <= 30){
-      badge.textContent = `Strict ${kb} KB Max`;
-      badge.className = 'status-badge tight';
-    } else {
-      badge.textContent = `Target: ${kb} KB`;
-      badge.className = 'status-badge normal';
-    }
-  }
-
-  chipBtns.forEach(chip => {
-    if(chip.dataset && chip.dataset.kb){
-      chip.addEventListener('click', () => {
-        setTargetKB(parseInt(chip.dataset.kb, 10));
-      });
-    }
-  });
-
-  kbSlider.addEventListener('input', updateKbDisplay);
-  updateKbDisplay();
-
-  // Mode Profile Chips (doc vs photo)
-  let currentOptMode = 'doc'; // 'doc' or 'photo'
-  const optDoc = document.getElementById('optDoc');
-  const optPhoto = document.getElementById('optPhoto');
-
-  optDoc.addEventListener('click', ()=>{
-    currentOptMode = 'doc';
-    optDoc.classList.add('active');
-    optPhoto.classList.remove('active');
-  });
-
-  optPhoto.addEventListener('click', ()=>{
-    currentOptMode = 'photo';
-    optPhoto.classList.add('active');
-    optDoc.classList.remove('active');
-  });
-
-  // Action Buttons
-  document.getElementById('compressBtn').addEventListener('click', ()=>{
-    if(!originalImage) return;
-    executeUltraCompress(KB_STOPS[+kbSlider.value], true);
-  });
-
-  document.getElementById('previewCompressBtn').addEventListener('click', ()=>{
-    if(!originalImage) return;
-    executeUltraCompress(KB_STOPS[+kbSlider.value], false);
-  });
-
-  inspectCloseBtn.addEventListener('click', ()=>{
-    inspectBanner.classList.remove('show');
-    render(false);
-  });
-
-  inspectDownloadBtn.addEventListener('click', ()=>{
-    if(currentCompressedBlob){
-      triggerDownload(currentCompressedBlob, currentCompressedFilename);
-    }
-  });
-
-  // =========================================================================
-  // ENHANCED FILTERS & FX CONTROLS
-  // =========================================================================
-  
-  // Sliders Elements
-  const slBrightness = document.getElementById('slBrightness');
-  const valBrightness = document.getElementById('valBrightness');
-  const slContrast = document.getElementById('slContrast');
-  const valContrast = document.getElementById('valContrast');
-  const slSaturation = document.getElementById('slSaturation');
-  const valSaturation = document.getElementById('valSaturation');
-  const slWarmth = document.getElementById('slWarmth');
-  const valWarmth = document.getElementById('valWarmth');
-  const slSharpen = document.getElementById('slSharpen');
-  const valSharpen = document.getElementById('valSharpen');
-  const slExposure = document.getElementById('slExposure');
-  const valExposure = document.getElementById('valExposure');
-
-  // Sliders Event Handlers
-  slBrightness.addEventListener('input', ()=>{
-    adjustments.brightness = parseInt(slBrightness.value, 10);
-    valBrightness.textContent = (adjustments.brightness > 0 ? '+' : '') + adjustments.brightness + '%';
-    clearActivePresetHighlight();
-    render(false);
-  });
-
-  slContrast.addEventListener('input', ()=>{
-    adjustments.contrast = parseInt(slContrast.value, 10);
-    valContrast.textContent = (adjustments.contrast > 0 ? '+' : '') + adjustments.contrast + '%';
-    clearActivePresetHighlight();
-    render(false);
-  });
-
-  slSaturation.addEventListener('input', ()=>{
-    adjustments.saturation = parseInt(slSaturation.value, 10);
-    valSaturation.textContent = (adjustments.saturation > 0 ? '+' : '') + adjustments.saturation + '%';
-    clearActivePresetHighlight();
-    render(false);
-  });
-
-  slWarmth.addEventListener('input', ()=>{
-    adjustments.warmth = parseInt(slWarmth.value, 10);
-    valWarmth.textContent = (adjustments.warmth > 0 ? '+' : '') + adjustments.warmth;
-    clearActivePresetHighlight();
-    render(false);
-  });
-
-  slSharpen.addEventListener('input', ()=>{
-    adjustments.sharpen = parseInt(slSharpen.value, 10);
-    valSharpen.textContent = adjustments.sharpen + '%';
-    clearActivePresetHighlight();
-    render(false);
-  });
-
-  slExposure.addEventListener('input', ()=>{
-    adjustments.exposure = parseInt(slExposure.value, 10);
-    valExposure.textContent = (adjustments.exposure > 0 ? '+' : '') + adjustments.exposure + '%';
-    clearActivePresetHighlight();
-    render(false);
-  });
-
-  document.getElementById('resetSlidersBtn').addEventListener('click', ()=>{
-    resetAdjustmentSliders();
-    render(false);
-  });
-
-  function resetAdjustmentSliders(){
-    adjustments.brightness = 0; slBrightness.value = 0; valBrightness.textContent = '0%';
-    adjustments.contrast = 0; slContrast.value = 0; valContrast.textContent = '0%';
-    adjustments.saturation = 0; slSaturation.value = 0; valSaturation.textContent = '0%';
-    adjustments.warmth = 0; slWarmth.value = 0; valWarmth.textContent = '0';
-    adjustments.sharpen = 0; slSharpen.value = 0; valSharpen.textContent = '0%';
-    adjustments.exposure = 0; slExposure.value = 0; valExposure.textContent = '0%';
-  }
-
-  // Toggles Elements
-  const fxGrayscale = document.getElementById('fxGrayscale');
-  const fxSepia = document.getElementById('fxSepia');
-  const fxNegative = document.getElementById('fxNegative');
-  const fxVignette = document.getElementById('fxVignette');
-  const fxBlur = document.getElementById('fxBlur');
-  const fxSketch = document.getElementById('fxSketch');
-  const fxPixelate = document.getElementById('fxPixelate');
-  const fxDuotone = document.getElementById('fxDuotone');
-
-  const effectCheckboxes = [
-    { el: fxGrayscale, key: 'grayscale' },
-    { el: fxSepia, key: 'sepia' },
-    { el: fxNegative, key: 'negative' },
-    { el: fxVignette, key: 'vignette' },
-    { el: fxBlur, key: 'blur' },
-    { el: fxSketch, key: 'sketch' },
-    { el: fxPixelate, key: 'pixelate' },
-    { el: fxDuotone, key: 'duotone' }
-  ];
-
-  effectCheckboxes.forEach(({ el, key })=>{
-    el.addEventListener('change', ()=>{
-      effects[key] = el.checked;
-      clearActivePresetHighlight();
-      render(false);
-    });
-  });
-
-  document.getElementById('resetTogglesBtn').addEventListener('click', ()=>{
-    resetEffectToggles();
-    render(false);
-  });
-
-  function resetEffectToggles(){
-    effectCheckboxes.forEach(({ el, key })=>{
-      effects[key] = false;
-      el.checked = false;
-    });
-  }
-
-  // Preset Chips
-  const styleChips = document.querySelectorAll('.style-chip');
-  styleChips.forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      applyPresetStyle(chip.dataset.preset);
-    });
-  });
-
-  document.getElementById('resetPresetsBtn').addEventListener('click', ()=>{
-    applyPresetStyle('original');
-  });
-
-  function clearActivePresetHighlight(){
-    styleChips.forEach(c=>c.classList.remove('active'));
-    activePreset = '';
-  }
-
-  function applyPresetStyle(preset){
-    activePreset = preset;
-    styleChips.forEach(c => {
-      c.classList.toggle('active', c.dataset.preset === preset);
-    });
-
-    // Reset base sliders & toggles first
-    resetAdjustmentSliders();
-    resetEffectToggles();
-
-    switch(preset){
-      case 'original':
-        // Clean default
-        break;
-
-      case 'auto':
-        adjustments.contrast = 14; slContrast.value = 14; valContrast.textContent = '+14%';
-        adjustments.saturation = 18; slSaturation.value = 18; valSaturation.textContent = '+18%';
-        adjustments.exposure = 6; slExposure.value = 6; valExposure.textContent = '+6%';
-        adjustments.sharpen = 25; slSharpen.value = 25; valSharpen.textContent = '25%';
-        break;
-
-      case 'clean_doc':
-        // Specifically optimized for documents, forms, receipts & text screenshots
-        effects.grayscale = true; fxGrayscale.checked = true;
-        adjustments.contrast = 45; slContrast.value = 45; valContrast.textContent = '+45%';
-        adjustments.exposure = 15; slExposure.value = 15; valExposure.textContent = '+15%';
-        adjustments.brightness = 5; slBrightness.value = 5; valBrightness.textContent = '+5%';
-        adjustments.sharpen = 40; slSharpen.value = 40; valSharpen.textContent = '40%';
-        break;
-
-      case 'cyberpunk':
-        effects.duotone = true; fxDuotone.checked = true;
-        adjustments.contrast = 20; slContrast.value = 20; valContrast.textContent = '+20%';
-        adjustments.sharpen = 20; slSharpen.value = 20; valSharpen.textContent = '20%';
-        break;
-
-      case 'vintage':
-        effects.sepia = true; fxSepia.checked = true;
-        effects.vignette = true; fxVignette.checked = true;
-        adjustments.warmth = 25; slWarmth.value = 25; valWarmth.textContent = '+25';
-        adjustments.contrast = -8; slContrast.value = -8; valContrast.textContent = '-8%';
-        break;
-
-      case 'noir':
-        effects.grayscale = true; fxGrayscale.checked = true;
-        effects.vignette = true; fxVignette.checked = true;
-        adjustments.contrast = 35; slContrast.value = 35; valContrast.textContent = '+35%';
-        adjustments.brightness = -6; slBrightness.value = -6; valBrightness.textContent = '-6%';
-        break;
-
-      case 'golden':
-        adjustments.warmth = 45; slWarmth.value = 45; valWarmth.textContent = '+45';
-        adjustments.saturation = 20; slSaturation.value = 20; valSaturation.textContent = '+20%';
-        adjustments.brightness = 5; slBrightness.value = 5; valBrightness.textContent = '+5%';
-        break;
-
-      case 'nordic':
-        adjustments.warmth = -35; slWarmth.value = -35; valWarmth.textContent = '-35';
-        adjustments.contrast = 15; slContrast.value = 15; valContrast.textContent = '+15%';
-        adjustments.saturation = -10; slSaturation.value = -10; valSaturation.textContent = '-10%';
-        break;
-    }
-
-    render(true);
-  }
-
-  function resetAllFiltersAndAdjustments(){
-    resetAdjustmentSliders();
-    resetEffectToggles();
-    styleChips.forEach(c => {
-      c.classList.toggle('active', c.dataset.preset === 'original');
-    });
-    activePreset = 'original';
-  }
-
-  // ---------- Watermark ----------
-  const wmToggle = document.getElementById('wmToggle');
-  const wmPreview = document.getElementById('wmPreview');
-  const wmDay = document.getElementById('wmDay');
-  const wmMonth = document.getElementById('wmMonth');
-  const wmYear = document.getElementById('wmYear');
-
-  (function initWmDateTime(){
-    const now = new Date();
-    wmDay.value = now.getDate();
-    wmMonth.value = now.getMonth()+1;
-    wmYear.value = now.getFullYear();
-  })();
-
-  function updateWmPreviewText(){
-    const day = String(wmDay.value).padStart(2,'0');
-    const month = String(wmMonth.value).padStart(2,'0');
-    const year = wmYear.value;
-    wmPreview.textContent = `Preview: ${year}-${month}-${day}`;
-  }
-  [wmDay, wmMonth, wmYear].forEach(inp => inp.addEventListener('input', ()=>{
-    updateWmPreviewText();
-    if(watermarkOn) render(false);
-  }));
-  updateWmPreviewText();
-
-  wmToggle.addEventListener('change', ()=>{
-    watermarkOn = wmToggle.checked;
-    render(false);
-  });
-
-  // =========================================================================
-  // UNIFIED RENDERING & IMAGE PROCESSING PIPELINE
-  // =========================================================================
-
-  // Build the CSS filter string from active adjustments and CSS-supported effects
-  function buildCssFilterString(){
-    const filters = [];
-
-    // Brightness + Exposure
-    const totalBrightness = 100 + adjustments.brightness + (adjustments.exposure * 0.8);
-    if(totalBrightness !== 100) filters.push(`brightness(${Math.max(0, totalBrightness)}%)`);
-
-    // Contrast
-    const totalContrast = 100 + adjustments.contrast;
-    if(totalContrast !== 100) filters.push(`contrast(${Math.max(0, totalContrast)}%)`);
-
-    // Saturation
-    const totalSat = 100 + adjustments.saturation;
-    if(totalSat !== 100) filters.push(`saturate(${Math.max(0, totalSat)}%)`);
-
-    // Effects
-    if(effects.grayscale) filters.push('grayscale(100%)');
-    if(effects.sepia) filters.push('sepia(100%)');
-    if(effects.negative) filters.push('invert(100%)');
-    if(effects.blur) filters.push('blur(3px)');
-
-    return filters.length ? filters.join(' ') : 'none';
-  }
-
-  // Core image processor: renders image with all filters and effects onto any canvas
-  function renderPipeline(targetCvs, imgSource, w, h){
-    targetCvs.width = w;
-    targetCvs.height = h;
-    const tCtx = targetCvs.getContext('2d');
-    tCtx.imageSmoothingEnabled = true;
-    tCtx.imageSmoothingQuality = 'high';
-
-    // 1. Draw base with hardware-accelerated CSS filters
-    const cssFilter = buildCssFilterString();
-    tCtx.filter = cssFilter;
-    tCtx.drawImage(imgSource, 0, 0, w, h);
-    tCtx.filter = 'none'; // reset filter context
-
-    // 2. Pixel-level effects if active
-    const needPixelPass = adjustments.warmth !== 0 || adjustments.sharpen > 0 || effects.sketch || effects.pixelate || effects.duotone;
-
-    if(needPixelPass){
-      applyPixelProcessing(targetCvs, tCtx, w, h);
-    }
-
-    // 3. Vignette overlay if active
-    if(effects.vignette){
-      applyVignetteOverlay(tCtx, w, h);
-    }
-
-    // 4. Watermark if active
-    if(watermarkOn){
-      applyWatermark(tCtx, w, h);
-    }
-  }
-
-  function applyPixelProcessing(cvs, pCtx, w, h){
-    const imgData = pCtx.getImageData(0, 0, w, h);
-    const d = imgData.data;
-
-    // 8-Bit Pixelate Effect
-    if(effects.pixelate){
-      const blockSize = Math.max(4, Math.round(Math.min(w, h) / 75));
-      for(let y = 0; y < h; y += blockSize){
-        for(let x = 0; x < w; x += blockSize){
-          const p = (y * w + x) * 4;
-          const r = d[p], g = d[p+1], b = d[p+2], a = d[p+3];
-          for(let by = 0; by < blockSize && (y + by) < h; by++){
-            for(let bx = 0; bx < blockSize && (x + bx) < w; bx++){
-              const idx = ((y + by) * w + (x + bx)) * 4;
-              d[idx] = r; d[idx+1] = g; d[idx+2] = b; d[idx+3] = a;
-            }
-          }
-        }
-      }
-    }
-
-    // Warmth / Temperature Adjustment
-    if(adjustments.warmth !== 0){
-      const factor = adjustments.warmth / 100;
-      for(let i = 0; i < d.length; i += 4){
-        if(factor > 0){
-          // Warm amber tint: boost Red and slightly Green, suppress Blue
-          d[i] = clamp(d[i] + factor * 35);
-          d[i+1] = clamp(d[i+1] + factor * 14);
-          d[i+2] = clamp(d[i+2] - factor * 22);
-        } else {
-          // Cool Nordic blue tint: boost Blue, suppress Red
-          const cool = -factor;
-          d[i] = clamp(d[i] - cool * 24);
-          d[i+1] = clamp(d[i+1] + cool * 6);
-          d[i+2] = clamp(d[i+2] + cool * 36);
-        }
-      }
-    }
-
-    // Neon Duotone Cyberpunk Map (Teal #04E7D0 to Hot Pink #FF2A85)
-    if(effects.duotone){
-      for(let i = 0; i < d.length; i += 4){
-        const lum = (0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]) / 255;
-        // Shadow: #051622 -> Mid: #04E7D0 -> Highlight: #FF2A85
-        d[i] = clamp(5 + lum * 250);
-        d[i+1] = clamp(22 + (1 - Math.abs(lum - 0.5) * 2) * 209);
-        d[i+2] = clamp(34 + (1 - lum) * 174 + lum * 100);
-      }
-    }
-
-    // Pencil Sketch / Edge Detection
-    if(effects.sketch){
-      const gray = new Uint8ClampedArray(w * h);
-      for(let i = 0, j = 0; i < d.length; i += 4, j++){
-        gray[j] = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-      }
-      for(let y = 1; y < h - 1; y++){
-        for(let x = 1; x < w - 1; x++){
-          const idx = y * w + x;
-          const gx = -gray[idx - w - 1] + gray[idx - w + 1] - 2 * gray[idx - 1] + 2 * gray[idx + 1] - gray[idx + w - 1] + gray[idx + w + 1];
-          const gy = -gray[idx - w - 1] - 2 * gray[idx - w] - gray[idx - w + 1] + gray[idx + w - 1] + 2 * gray[idx + w] + gray[idx + w + 1];
-          const mag = Math.min(255, Math.hypot(gx, gy));
-          const val = 255 - mag; // Inverted so paper is white and edges are pencil dark
-          const p = idx * 4;
-          d[p] = val; d[p+1] = val; d[p+2] = val;
-        }
-      }
-    }
-
-    pCtx.putImageData(imgData, 0, 0);
-
-    // Unsharp Sharpen Pass
-    if(adjustments.sharpen > 0){
-      applySharpenPass(cvs, pCtx, w, h, (adjustments.sharpen / 100) * 0.6);
-    }
-  }
-
-  function applySharpenPass(cvs, sCtx, w, h, strength){
-    const imgData = sCtx.getImageData(0, 0, w, h);
-    const src = imgData.data;
-    const out = new Uint8ClampedArray(src);
-    const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-
-    for(let y = 1; y < h - 1; y++){
-      for(let x = 1; x < w - 1; x++){
-        for(let c = 0; c < 3; c++){
-          let sum = 0, k = 0;
-          for(let ky = -1; ky <= 1; ky++){
-            for(let kx = -1; kx <= 1; kx++){
-              sum += src[((y + ky) * w + (x + kx)) * 4 + c] * kernel[k++];
-            }
-          }
-          const i = (y * w + x) * 4 + c;
-          out[i] = clamp(src[i] * (1 - strength) + sum * strength);
-        }
-      }
-    }
-    imgData.data.set(out);
-    sCtx.putImageData(imgData, 0, 0);
-  }
-
-  function applyVignetteOverlay(vCtx, w, h){
-    vCtx.save();
-    const cx = w / 2, cy = h / 2;
-    const radius = Math.hypot(cx, cy);
-    const grad = vCtx.createRadialGradient(cx, cy, radius * 0.38, cx, cy, radius);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(0.7, 'rgba(0,0,0,0.22)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.68)');
-    vCtx.fillStyle = grad;
-    vCtx.fillRect(0, 0, w, h);
-    vCtx.restore();
-  }
-
-  function applyWatermark(wCtx, w, h){
-    wCtx.save();
-    const day = String(wmDay.value).padStart(2,'0');
-    const month = String(wmMonth.value).padStart(2,'0');
-    const year = wmYear.value;
-    const text = `${year}-${month}-${day}`;
-    
-    const fontSize = Math.max(12, Math.round(w / 35));
-    wCtx.font = `600 ${fontSize}px 'JetBrains Mono', monospace`;
-    wCtx.textAlign = 'right';
-    wCtx.textBaseline = 'bottom';
-    
-    const margin = Math.round(fontSize * 1.2);
-    // Shadow outline
-    wCtx.fillStyle = 'rgba(0,0,0,0.7)';
-    wCtx.fillText(text, w - margin + 1, h - margin + 1);
-    // Crisp text
-    wCtx.fillStyle = '#49D9C7';
-    wCtx.fillText(text, w - margin, h - margin);
-    wCtx.restore();
-  }
-
-  function render(animate){
-    if(!originalImage) return;
-    renderPipeline(canvas, originalImage, currentWidth, currentHeight);
-    updateReadout();
-    if(animate){
-      scanline.classList.remove('run');
-      void scanline.offsetWidth;
-      scanline.classList.add('run');
-    }
-  }
-
-  function updateReadout(){
-    roDims.textContent = canvas.width + ' × ' + canvas.height + ' px';
-    canvas.toBlob(blob=>{
-      if(!blob) return;
-      const kb = blob.size/1024;
-      roSize.textContent = kb > 1024 ? (kb/1024).toFixed(2)+' MB' : Math.round(kb)+' KB';
-    }, 'image/jpeg', 0.85);
-  }
-
-  // ---------- Download (standard export) ----------
-  const exportFormat = document.getElementById('exportFormat');
-  const exportQualityRow = document.getElementById('exportQualityRow');
-  const exportQuality = document.getElementById('exportQuality');
-  const exportQualityVal = document.getElementById('exportQualityVal');
-
-  exportFormat.addEventListener('change', ()=>{
-    exportQualityRow.style.display = exportFormat.value === 'png' ? 'none' : 'flex';
-  });
-  exportQuality.addEventListener('input', ()=>{
-    exportQualityVal.textContent = exportQuality.value + '%';
-  });
-
-  document.getElementById('downloadBtn').addEventListener('click', ()=>{
-    const format = exportFormat.value;
-    const mime = format === 'png' ? 'image/png' : (format === 'webp' ? 'image/webp' : 'image/jpeg');
-    const q = parseInt(exportQuality.value, 10) / 100;
-    
-    canvas.toBlob(blob=>{
-      triggerDownload(blob, `image-follow-up.${format}`);
-    }, mime, q);
-  });
-
-  // =========================================================================
-  // ROBUST READABILITY-PRESERVING ULTRA-COMPRESSOR (20KB, 30KB TARGETS)
-  // =========================================================================
-
-  function canvasToBlobAsync(cvs, mime, quality){
-    return new Promise(resolve => cvs.toBlob(resolve, mime, quality));
-  }
-
-  async function executeUltraCompress(targetKB, autoDownload){
-    if(!originalImage) return;
-
-    // Strict government portal limit: file size MUST NOT exceed targetKB (e.g. 20,480 bytes)
-    // We enforce 98% ceiling so upload is 100% guaranteed to pass portal validation checks!
-    const targetBytes = targetKB * 1024;
-    const maxAllowedBytes = Math.floor(targetBytes * 0.98); 
-    const minTargetBytes = Math.floor(targetBytes * 0.78);
-
-    const compressFormatSelect = document.getElementById('compressFormatSelect');
-    const selectedFormat = compressFormatSelect ? compressFormatSelect.value : 'jpeg';
-    const mime = selectedFormat === 'webp' ? 'image/webp' : 'image/jpeg';
-    const ext = selectedFormat === 'webp' ? 'webp' : 'jpg';
-
-    // Source dimensions
-    const srcW = baseWidth || originalImage.width;
-    const srcH = baseHeight || originalImage.height;
-
-    // Readability profile limits:
-    let maxInitialDim;
-    if(targetKB <= 20) {
-      maxInitialDim = (currentOptMode === 'doc') ? 950 : 750;
-    } else if(targetKB <= 30) {
-      maxInitialDim = (currentOptMode === 'doc') ? 1150 : 900;
-    } else if(targetKB <= 50) {
-      maxInitialDim = 1350;
-    } else {
-      maxInitialDim = 1800;
-    }
-
-    const baseScale = Math.min(1.0, maxInitialDim / Math.max(srcW, srcH));
-
-    // Multi-scale candidate ladder: tests scales from high resolution downwards
-    const scaleMultipliers = [1.0, 0.92, 0.84, 0.76, 0.68, 0.60, 0.52, 0.44, 0.36, 0.30];
-    const candidateScales = scaleMultipliers.map(m => m * baseScale);
-
-    let bestCandidate = null;
-    let bestScore = -1;
-
-    // Quality floors: text needs quality >= 0.48 to avoid DCT boxiness; photos look best >= 0.54
-    const MIN_Q = (currentOptMode === 'doc') ? 0.48 : 0.54;
-    const MAX_Q = 0.92;
-
-    for(const scale of candidateScales){
-      const tw = Math.max(160, Math.round(srcW * scale));
-      const th = Math.max(160, Math.round(srcH * scale));
-
-      // Offscreen canvas processed with all active filters & adjustments
-      const testCanvas = document.createElement('canvas');
-      renderPipeline(testCanvas, originalImage, tw, th);
-
-      // Check file size at MIN_Q
-      const minBlob = await canvasToBlobAsync(testCanvas, mime, MIN_Q);
-      if(!minBlob) continue;
-
-      if(minBlob.size > maxAllowedBytes){
-        continue; // Too big at this resolution, move to smaller scale
-      }
-
-      // Binary search to find HIGHEST quality that stays <= maxAllowedBytes
-      let lowQ = MIN_Q;
-      let highQ = MAX_Q;
-      let matchedBlob = minBlob;
-      let matchedQ = MIN_Q;
-
-      for(let step = 0; step < 5; step++){
-        const testQ = (lowQ + highQ) / 2;
-        const blob = await canvasToBlobAsync(testCanvas, mime, testQ);
-        if(!blob) continue;
-
-        if(blob.size <= maxAllowedBytes){
-          matchedBlob = blob;
-          matchedQ = testQ;
-          lowQ = testQ; // Try higher quality
-        } else {
-          highQ = testQ; // Lower quality to fit
-        }
-      }
-
-      // Readability score: combines physical resolution with JPEG fidelity
-      const legibilityScore = Math.sqrt(tw * th) * Math.pow(matchedQ, 0.75);
-
-      if(legibilityScore > bestScore){
-        bestScore = legibilityScore;
-        bestCandidate = {
-          blob: matchedBlob,
-          canvas: testCanvas,
-          width: tw,
-          height: th,
-          quality: matchedQ,
-          sizeBytes: matchedBlob.size
-        };
-
-        if(matchedQ >= 0.68 && matchedBlob.size >= minTargetBytes){
-          break;
-        }
-      }
-    }
-
-    // Emergency fallback if image was extraordinarily dense/noisy
-    if(!bestCandidate || bestCandidate.blob.size > maxAllowedBytes){
-      const emergencyW = Math.max(200, Math.round(srcW * 0.28));
-      const emergencyH = Math.max(200, Math.round(srcH * 0.28));
-      const emCanvas = document.createElement('canvas');
-      renderPipeline(emCanvas, originalImage, emergencyW, emergencyH);
-      const emBlob = await canvasToBlobAsync(emCanvas, mime, 0.45);
-      bestCandidate = {
-        blob: emBlob,
-        canvas: emCanvas,
-        width: emergencyW,
-        height: emergencyH,
-        quality: 0.45,
-        sizeBytes: emBlob.size
-      };
-    }
-
-    const finalSizeKB = (bestCandidate.sizeBytes / 1024).toFixed(1);
-    currentCompressedBlob = bestCandidate.blob;
-    currentCompressedFilename = `compressed-${targetKB}kb.${ext}`;
-
-    // Display inspection stats
-    inspectBadge.textContent = `${finalSizeKB} KB / ${targetKB} KB Limit (Pass ✅)`;
-    inspectBadge.style.color = 'var(--success)';
-    inspectBadge.style.borderColor = 'var(--success)';
-    inspectBadge.style.background = 'rgba(74,222,128,0.18)';
-    inspectDims.textContent = `(${bestCandidate.width} × ${bestCandidate.height} px · Q: ${Math.round(bestCandidate.quality * 100)}%)`;
-    inspectBanner.classList.add('show');
-
-    // Render compressed result to on-screen canvas for user to verify readability
-    canvas.width = bestCandidate.width;
-    canvas.height = bestCandidate.height;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bestCandidate.canvas, 0, 0);
-
-    roDims.textContent = `${bestCandidate.width} × ${bestCandidate.height} px`;
-    roSize.textContent = `${finalSizeKB} KB (Ready)`;
-
-    scanline.classList.remove('run');
-    void scanline.offsetWidth;
-    scanline.classList.add('run');
-
-    if(autoDownload){
-      triggerDownload(bestCandidate.blob, currentCompressedFilename);
-    }
-  }
-
-  function triggerDownload(blob, filename){
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url), 2500);
-  }
-
+  if(!window.THREE){$('#t3d').hidden=true;return}
+  const T=THREE,r=new T.WebGLRenderer({canvas:$('#bg'),alpha:true,antialias:true});r.setPixelRatio(Math.min(devicePixelRatio,1.75));
+  const sc=new T.Scene(),cam=new T.PerspectiveCamera(55,1,.1,100);cam.position.z=9;
+  sc.add(new T.AmbientLight(0x7788ff,.7));
+  const l1=new T.PointLight(0x5cf2ff,2.4,50);l1.position.set(-8,5,6);const l2=new T.PointLight(0xff4fd8,2.4,50);l2.position.set(8,-5,4);sc.add(l1,l2);
+  const G=[new T.IcosahedronGeometry(1.7,0),new T.TorusKnotGeometry(1,.32,120,16),new T.OctahedronGeometry(1.5),new T.TorusGeometry(1.2,.42,16,48),new T.DodecahedronGeometry(1.3),new T.IcosahedronGeometry(.9,1)];
+  const P=[[-6.5,3,-3],[6.5,2.5,-4],[-5.5,-3.5,-2],[6,-3,-3],[0,5.5,-9],[1,-5.5,-7]],C=[0x5cf2ff,0x8b6bff,0xff4fd8];
+  const O=G.map((g,i)=>{const m=new T.Mesh(g,new T.MeshStandardMaterial({color:C[i%3],metalness:.85,roughness:.18,transparent:true,opacity:.6}));
+    m.add(new T.LineSegments(new T.EdgesGeometry(g),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.4})));m.position.set(...P[i]);sc.add(m);return m});
+  const n=800,a=new Float32Array(n*3);for(let i=0;i<n*3;i++)a[i]=(Math.random()-.5)*44;
+  const pg=new T.BufferGeometry();pg.setAttribute('position',new T.BufferAttribute(a,3));
+  const pts=new T.Points(pg,new T.PointsMaterial({size:.06,color:0xaab4ff,transparent:true,opacity:.75}));sc.add(pts);
+  let mx=0,my=0,raf=0;addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5});
+  const size=()=>{r.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()};addEventListener('resize',size);size();
+  const clock=new T.Clock(),still=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function frame(){
+    const t=clock.getElapsedTime();
+    O.forEach((o,i)=>{o.rotation.x=t*.18*(1+i*.12);o.rotation.y=t*.24;o.position.y=P[i][1]+Math.sin(t*.8+i)*.45});
+    pts.rotation.y=t*.02;cam.position.x+=(mx*3-cam.position.x)*.04;cam.position.y+=(-my*2-cam.position.y)*.04;cam.lookAt(0,0,0);r.render(sc,cam)}
+  function loop(){raf=0;if(!on3d||document.hidden)return;frame();if(!still)raf=requestAnimationFrame(loop)}
+  go=()=>{if(!raf)raf=requestAnimationFrame(loop)};document.addEventListener('visibilitychange',go);go();
 })();
 </script>
 </body>
